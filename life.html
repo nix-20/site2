@@ -1,0 +1,414 @@
+import React, { useState, useEffect } from "react";
+
+const initialCharacter = {
+  name: "Matteo",
+  age: 18,
+  time: { day: 1, month: 1, year: 2025 },
+  stats: {
+    health: 100,
+    energy: 80,
+    happiness: 60,
+    money: 1000,
+    charisma: 50,
+    intelligence: 70,
+    stress: 20,
+    creativity: 40,
+    strength: 30,
+  },
+  relationships: { friends: 5, family: 3, partner: null },
+  career: { job: null, level: 0, experience: 0, salary: 0 },
+};
+
+const daysInMonth = 30;
+const monthsInYear = 12;
+
+const actions = [
+  {
+    key: "work",
+    label: "Lavorare",
+    effects: { money: 120, energy: -30, stress: 20, happiness: -15, experience: 25 },
+  },
+  {
+    key: "sleep",
+    label: "Dormire",
+    effects: { energy: 50, stress: -30, health: 15 },
+  },
+  {
+    key: "study",
+    label: "Studiare",
+    effects: { intelligence: 15, energy: -25, stress: 10, happiness: -5, experience: 15 },
+  },
+  {
+    key: "socialize",
+    label: "Socializzare",
+    effects: { happiness: 25, energy: -20, stress: -25, charisma: 10, friends: 1 },
+  },
+  {
+    key: "exercise",
+    label: "Fare esercizio",
+    effects: { health: 20, energy: -30, stress: -15, strength: 10 },
+  },
+  {
+    key: "relax",
+    label: "Rilassarsi",
+    effects: { happiness: 15, stress: -20, energy: 20 },
+  },
+];
+
+const events = [
+  {
+    id: 1,
+    description: "Ricevi un'offerta di promozione al lavoro!",
+    condition: (char) => char.career.job && char.career.experience >= 100 && char.career.level < 5,
+    options: [
+      {
+        text: "Accetta con entusiasmo la promozione",
+        effect: (char) => {
+          const career = { ...char.career };
+          career.level += 1;
+          career.salary += 500;
+          char.stats.happiness += 20;
+          char.stats.stress -= 10;
+          return { ...char, career };
+        },
+      },
+      {
+        text: "Rifiuta, non ti senti pronto",
+        effect: (char) => {
+          char.stats.stress += 15;
+          char.stats.happiness -= 10;
+          return char;
+        },
+      },
+    ],
+  },
+  {
+    id: 2,
+    description: "Un amico ti invita a una festa questa sera.",
+    condition: (char) => char.stats.energy > 40,
+    options: [
+      {
+        text: "Accetti e ti diverti",
+        effect: (char) => {
+          char.stats.happiness += 15;
+          char.stats.energy -= 30;
+          char.relationships.friends += 1;
+          return char;
+        },
+      },
+      {
+        text: "Rifiuti per stanchezza",
+        effect: (char) => {
+          char.stats.stress += 5;
+          char.stats.energy -= 10;
+          return char;
+        },
+      },
+    ],
+  },
+  {
+    id: 3,
+    description: "Senti un leggero malessere, decidi cosa fare.",
+    condition: (char) => char.stats.health < 70,
+    options: [
+      {
+        text: "Vai dal dottore",
+        effect: (char) => {
+          char.stats.health += 30;
+          char.stats.money -= 100;
+          char.stats.stress -= 15;
+          return char;
+        },
+      },
+      {
+        text: "Ignori il malessere",
+        effect: (char) => {
+          char.stats.health -= 10;
+          char.stats.stress += 20;
+          return char;
+        },
+      },
+    ],
+  },
+  {
+    id: 4,
+    description: "Trovi un piccolo investimento, decidi cosa fare.",
+    condition: (char) => char.stats.money >= 200,
+    options: [
+      {
+        text: "Investi 200€ sperando in un guadagno",
+        effect: (char) => {
+          char.stats.money -= 200;
+          if (Math.random() < 0.6) {
+            char.stats.money += 400;
+            char.stats.happiness += 20;
+          } else {
+            char.stats.money += 100;
+            char.stats.happiness -= 10;
+          }
+          return char;
+        },
+      },
+      {
+        text: "Preferisci non rischiare",
+        effect: (char) => {
+          char.stats.happiness -= 5;
+          return char;
+        },
+      },
+    ],
+  },
+  {
+    id: 5,
+    description: "Ricevi un messaggio da un vecchio amico.",
+    condition: (char) => true,
+    options: [
+      {
+        text: "Rispondi e pianifichi un incontro",
+        effect: (char) => {
+          char.stats.happiness += 10;
+          char.relationships.friends += 1;
+          return char;
+        },
+      },
+      {
+        text: "Ignori il messaggio",
+        effect: (char) => {
+          char.stats.stress += 5;
+          return char;
+        },
+      },
+    ],
+  },
+];
+
+// Funzione per limitare i valori tra 0 e 100
+function clampStats(stats) {
+  const clamped = {};
+  for (let key in stats) {
+    if (typeof stats[key] === "number") {
+      clamped[key] = Math.min(100, Math.max(0, stats[key]));
+    } else {
+      clamped[key] = stats[key];
+    }
+  }
+  return clamped;
+}
+
+// Funzione per avanzare di un giorno e applicare gli effetti dell'azione scelta
+function advanceTime(character, actionKey) {
+  let { day, month, year } = character.time;
+  day++;
+  if (day > daysInMonth) {
+    day = 1;
+    month++;
+    if (month > monthsInYear) {
+      month = 1;
+      year++;
+      character.age++;
+    }
+  }
+
+  const newStats = { ...character.stats };
+  const newRelationships = { ...character.relationships };
+  const newCareer = { ...character.career };
+
+  const action = actions.find((a) => a.key === actionKey);
+  if (action) {
+    for (const [key, val] of Object.entries(action.effects)) {
+      if (key === "friends") {
+        newRelationships.friends = Math.min(newRelationships.friends + val, 100);
+      } else if (key === "experience") {
+        newCareer.experience += val;
+        // Controllo promozione automatica
+        if (newCareer.experience >= 100 * (newCareer.level + 1)) {
+          newCareer.level++;
+          newCareer.salary += 500;
+          newStats.happiness += 15;
+          newStats.stress -= 10;
+        }
+      } else {
+        newStats[key] = (newStats[key] || 0) + val;
+      }
+    }
+  }
+
+  // Clamping valori stat
+  const clampedStats = clampStats(newStats);
+
+  return {
+    ...character,
+    time: { day, month, year },
+    stats: clampedStats,
+    relationships: newRelationships,
+    career: newCareer,
+    age: character.age,
+  };
+}
+
+function getAvailableEvents(character) {
+  return events.filter((ev) => ev.condition(character));
+}
+
+export default function App() {
+  const [character, setCharacter] = useState(() => {
+    const saved = localStorage.getItem("simLifeCharacter");
+    return saved ? JSON.parse(saved) : initialCharacter;
+  });
+
+  const [pendingEvent, setPendingEvent] = useState(null);
+
+  useEffect(() => {
+    localStorage.setItem("simLifeCharacter", JSON.stringify(character));
+  }, [character]);
+
+  function handleAction(actionKey) {
+    if (pendingEvent) return;
+
+    let updatedChar = advanceTime(character, actionKey);
+
+    // 70% possibilità di evento casuale
+    if (Math.random() < 0.7) {
+      const possibleEvents = getAvailableEvents(updatedChar);
+      if (possibleEvents.length > 0) {
+        const ev = possibleEvents[Math.floor(Math.random() * possibleEvents.length)];
+        setPendingEvent(ev);
+      }
+    }
+
+    setCharacter(updatedChar);
+  }
+
+  function resolveEvent(effectFn) {
+    let updatedChar = effectFn(character);
+    updatedChar.stats = clampStats(updatedChar.stats);
+    setCharacter(updatedChar);
+    setPendingEvent(null);
+  }
+
+  function ignoreEvent() {
+    setPendingEvent(null);
+  }
+
+  return (
+    <div style={{ maxWidth: 900, margin: "auto", fontFamily: "Arial, sans-serif", padding: 20 }}>
+      <h1>Simulatore di Vita Avanzato</h1>
+      <div
+        style={{
+          background: "#ddd",
+          padding: 15,
+          borderRadius: 8,
+          marginBottom: 15,
+        }}
+      >
+        <h2>
+          {character.name}, {character.age} anni
+        </h2>
+        <p>
+          Data: {character.time.day}/{character.time.month}/{character.time.year}
+        </p>
+        <p>
+          Carriera:{" "}
+          {character.career.job ? (
+            <>
+              {character.career.job} (Livello {character.career.level}) - {character.career.salary}€
+            </>
+          ) : (
+            "Disoccupato"
+          )}
+        </p>
+        <p>
+          Relazioni: {character.relationships.friends} amici, {character.relationships.family} familiari
+          {character.relationships.partner ? `, partner: ${character.relationships.partner}` : ""}
+        </p>
+      </div>
+
+      <div
+        style={{
+          background: "#eee",
+          padding: 10,
+          borderRadius: 8,
+          marginBottom: 15,
+        }}
+      >
+        <h3>Statistiche</h3>
+        <ul style={{ columns: 3, listStyle: "none", paddingLeft: 0 }}>
+          {Object.entries(character.stats).map(([key, val]) => (
+            <li key={key}>
+              <strong>{key.charAt(0).toUpperCase() + key.slice(1)}:</strong> {val}
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div style={{ marginBottom: 15 }}>
+        <h3>Azioni Giornaliere</h3>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          {actions.map((a) => (
+            <button
+              key={a.key}
+              onClick={() => handleAction(a.key)}
+              disabled={!!pendingEvent}
+              style={{
+                padding: "10px 18px",
+                borderRadius: 6,
+                cursor: pendingEvent ? "not-allowed" : "pointer",
+                background: "#fff",
+                border: "2px solid #333",
+                minWidth: 120,
+              }}
+            >
+              {a.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {pendingEvent && (
+        <div
+          style={{
+            background: "#fef3c7",
+            padding: 15,
+            borderRadius: 8,
+            border: "2px solid #fbbf24",
+            marginBottom: 20,
+          }}
+        >
+          <h3>Evento Inaspettato</h3>
+          <p>{pendingEvent.description}</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
+            {pendingEvent.options.map((opt, idx) => (
+              <button
+                key={idx}
+                onClick={() => resolveEvent(opt.effect)}
+                style={{
+                  background: "#f3f4f6",
+                  border: "1px solid #444",
+                  padding: "8px 12px",
+                  borderRadius: 5,
+                  cursor: "pointer",
+                }}
+              >
+                {opt.text}
+              </button>
+            ))}
+            <button
+              onClick={ignoreEvent}
+              style={{
+                marginTop: 10,
+                background: "#f87171",
+                border: "none",
+                padding: "8px 12px",
+                borderRadius: 5,
+                cursor: "pointer",
+                color: "white",
+              }}
+            >
+              Ignora evento
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
