@@ -1,0 +1,456 @@
+import React, { useState, useEffect } from "react";
+
+const initialCharacter = {
+  name: "Matteo",
+  age: 18,
+  time: { day: 1, month: 1, year: 2025 },
+  stats: {
+    health: 100,
+    energy: 80,
+    happiness: 60,
+    money: 1000,
+    charisma: 50,
+    intelligence: 70,
+    stress: 20,
+    creativity: 40,
+    strength: 30,
+  },
+  relationships: { friends: 5, family: 3, partner: null },
+  career: { job: null, level: 0, experience: 0, salary: 0 },
+};
+
+const daysInMonth = 30;
+const monthsInYear = 12;
+
+const actions = [
+  { key: "work", label: "Lavorare", effects: { money: 120, energy: -30, stress: 20, happiness: -15, experience: 25 } },
+  { key: "sleep", label: "Dormire", effects: { energy: 50, stress: -30, health: 15 } },
+  { key: "study", label: "Studiare", effects: { intelligence: 15, energy: -25, stress: 10, happiness: -5, experience: 15 } },
+  { key: "socialize", label: "Socializzare", effects: { happiness: 25, energy: -20, stress: -25, charisma: 10, friends: 1 } },
+  { key: "exercise", label: "Fare esercizio", effects: { health: 20, energy: -30, stress: -15, strength: 10 } },
+  { key: "relax", label: "Rilassarsi", effects: { happiness: 15, stress: -20, energy: 20 } },
+];
+
+const events = [
+  {
+    id: 1,
+    description: "Ricevi un'offerta di promozione al lavoro!",
+    condition: (char) => char.career.job && char.career.experience >= 100 && char.career.level < 5,
+    options: [
+      {
+        text: "Accetta con entusiasmo la promozione",
+        effect: (char) => {
+          const career = { ...char.career };
+          career.level += 1;
+          career.salary += 500;
+          char.stats.happiness += 20;
+          char.stats.stress -= 10;
+          return { ...char, career };
+        },
+      },
+      {
+        text: "Rifiuta, non ti senti pronto",
+        effect: (char) => {
+          char.stats.stress += 15;
+          char.stats.happiness -= 10;
+          return char;
+        },
+      },
+    ],
+  },
+  {
+    id: 2,
+    description: "Un amico ti invita a una festa questa sera.",
+    condition: (char) => char.stats.energy > 40,
+    options: [
+      {
+        text: "Accetti e ti diverti",
+        effect: (char) => {
+          char.stats.happiness += 15;
+          char.stats.energy -= 30;
+          char.relationships.friends += 1;
+          return char;
+        },
+      },
+      {
+        text: "Rifiuti per stanchezza",
+        effect: (char) => {
+          char.stats.stress += 5;
+          char.stats.energy -= 10;
+          return char;
+        },
+      },
+    ],
+  },
+  {
+    id: 3,
+    description: "Senti un leggero malessere, decidi cosa fare.",
+    condition: (char) => char.stats.health < 70,
+    options: [
+      {
+        text: "Vai dal dottore",
+        effect: (char) => {
+          char.stats.health += 30;
+          char.stats.money -= 100;
+          char.stats.stress -= 15;
+          return char;
+        },
+      },
+      {
+        text: "Ignori il malessere",
+        effect: (char) => {
+          char.stats.health -= 10;
+          char.stats.stress += 20;
+          return char;
+        },
+      },
+    ],
+  },
+  {
+    id: 4,
+    description: "Trovi un piccolo investimento, decidi cosa fare.",
+    condition: (char) => char.stats.money >= 200,
+    options: [
+      {
+        text: "Investi 200€ sperando in un guadagno",
+        effect: (char) => {
+          char.stats.money -= 200;
+          if (Math.random() < 0.6) {
+            char.stats.money += 400;
+            char.stats.happiness += 20;
+          } else {
+            char.stats.money += 100;
+            char.stats.happiness -= 10;
+          }
+          return char;
+        },
+      },
+      {
+        text: "Preferisci non rischiare",
+        effect: (char) => {
+          char.stats.happiness -= 5;
+          return char;
+        },
+      },
+    ],
+  },
+  {
+    id: 5,
+    description: "Ricevi un messaggio da un vecchio amico.",
+    condition: () => true,
+    options: [
+      {
+        text: "Rispondi e pianifichi un incontro",
+        effect: (char) => {
+          char.stats.happiness += 10;
+          char.relationships.friends += 1;
+          return char;
+        },
+      },
+      {
+        text: "Ignori il messaggio",
+        effect: (char) => {
+          char.stats.stress += 5;
+          return char;
+        },
+      },
+    ],
+  },
+];
+
+// Funzione per limitare i valori tra 0 e 100
+function clampStats(stats) {
+  const clamped = {};
+  for (let key in stats) {
+    if (typeof stats[key] === "number") {
+      clamped[key] = Math.min(100, Math.max(0, stats[key]));
+    } else {
+      clamped[key] = stats[key];
+    }
+  }
+  return clamped;
+}
+
+// Funzione per avanzare di un giorno e applicare gli effetti dell'azione scelta
+function advanceTime(character, actionKey) {
+  let { day, month, year } = character.time;
+  day++;
+  if (day > daysInMonth) {
+    day = 1;
+    month++;
+    if (month > monthsInYear) {
+      month = 1;
+      year++;
+      character.age++;
+    }
+  }
+
+  const newStats = { ...character.stats };
+  const newRelationships = { ...character.relationships };
+  const newCareer = { ...character.career };
+
+  const action = actions.find((a) => a.key === actionKey);
+  if (action) {
+    for (const [key, val] of Object.entries(action.effects)) {
+      if (key === "friends") {
+        newRelationships.friends = Math.min(newRelationships.friends + val, 100);
+      } else if (key === "experience") {
+        newCareer.experience += val;
+        // Controllo promozione automatica
+        if (newCareer.experience >= 100 * (newCareer.level + 1)) {
+          newCareer.level++;
+          newCareer.salary += 500;
+          newStats.happiness += 15;
+          newStats.stress -= 10;
+        }
+      } else {
+        newStats[key] = (newStats[key] || 0) + val;
+      }
+    }
+  }
+
+  // Clamping valori stat
+  const clampedStats = clampStats(newStats);
+
+  return {
+    ...character,
+    time: { day, month, year },
+    stats: clampedStats,
+    relationships: newRelationships,
+    career: newCareer,
+    age: character.age,
+  };
+}
+
+function getAvailableEvents(character) {
+  return events.filter((ev) => ev.condition(character));
+}
+
+export default function App() {
+  const [character, setCharacter] = useState(() => {
+    const saved = localStorage.getItem("simLifeCharacter");
+    return saved ? JSON.parse(saved) : initialCharacter;
+  });
+
+  const [pendingEvent, setPendingEvent] = useState(null);
+
+  useEffect(() => {
+    localStorage.setItem("simLifeCharacter", JSON.stringify(character));
+  }, [character]);
+
+  function handleAction(actionKey) {
+    if (pendingEvent) return;
+
+    let updatedChar = advanceTime(character, actionKey);
+
+    // 70% possibilità di evento casuale
+    if (Math.random() < 0.7) {
+      const possibleEvents = getAvailableEvents(updatedChar);
+      if (possibleEvents.length > 0) {
+        const ev = possibleEvents[Math.floor(Math.random() * possibleEvents.length)];
+        setPendingEvent(ev);
+      }
+    }
+
+    setCharacter(updatedChar);
+  }
+
+  function resolveEvent(effectFn) {
+    let updatedChar = effectFn(character);
+    updatedChar.stats = clampStats(updatedChar.stats);
+    setCharacter(updatedChar);
+    setPendingEvent(null);
+  }
+
+  function ignoreEvent() {
+    setPendingEvent(null);
+  }
+
+  return (
+    <div
+      style={{
+        maxWidth: 900,
+        margin: "20px auto",
+        fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+        backgroundColor: "#f5f7fa",
+        padding: 20,
+        borderRadius: 10,
+        boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
+      }}
+    >
+      <h1 style={{ textAlign: "center", color: "#2c3e50" }}>Simulatore di Vita Avanzato</h1>
+
+      <section
+        style={{
+          backgroundColor: "#ffffff",
+          borderRadius: 8,
+          padding: 15,
+          marginBottom: 20,
+          boxShadow: "0 1px 4px rgba(0,0,0,0.1)",
+        }}
+      >
+        <h2 style={{ marginBottom: 10 }}>
+          {character.name}, {character.age} anni
+        </h2>
+        <p style={{ margin: "5px 0" }}>
+          <strong>Data:</strong> {character.time.day}/{character.time.month}/{character.time.year}
+        </p>
+        <p style={{ margin: "5px 0" }}>
+          <strong>Carriera:</strong>{" "}
+          {character.career.job ? (
+            <>
+              {character.career.job} (Livello {character.career.level}) - {character.career.salary}€
+            </>
+          ) : (
+            "Disoccupato"
+          )}
+        </p>
+        <p style={{ margin: "5px 0" }}>
+          <strong>Relazioni:</strong> {character.relationships.friends} amici, {character.relationships.family} familiari
+          {character.relationships.partner ? `, partner: ${character.relationships.partner}` : ""}
+        </p>
+      </section>
+
+      <section
+        style={{
+          backgroundColor: "#ffffff",
+          borderRadius: 8,
+          padding: 15,
+          marginBottom: 20,
+          boxShadow: "0 1px 4px rgba(0,0,0,0.1)",
+        }}
+      >
+        <h3>Statistiche</h3>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill,minmax(140px,1fr))",
+            gap: 15,
+          }}
+        >
+          {Object.entries(character.stats).map(([key, val]) => (
+            <div
+              key={key}
+              style={{
+                backgroundColor: "#ecf0f1",
+                padding: 10,
+                borderRadius: 6,
+                textAlign: "center",
+                fontWeight: "600",
+                color: val > 50 ? "#27ae60" : val > 20 ? "#f39c12" : "#c0392b",
+              }}
+              title={key.charAt(0).toUpperCase() + key.slice(1)}
+            >
+              {key.charAt(0).toUpperCase() + key.slice(1)}: {val}
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section
+        style={{
+          backgroundColor: "#ffffff",
+          borderRadius: 8,
+          padding: 15,
+          marginBottom: 20,
+          boxShadow: "0 1px 4px rgba(0,0,0,0.1)",
+        }}
+      >
+        <h3>Azioni disponibili</h3>
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 12,
+            justifyContent: "center",
+          }}
+        >
+          {actions.map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => handleAction(key)}
+              style={{
+                padding: "12px 24px",
+                backgroundColor: "#2980b9",
+                color: "#fff",
+                border: "none",
+                borderRadius: 6,
+                cursor: pendingEvent ? "not-allowed" : "pointer",
+                opacity: pendingEvent ? 0.5 : 1,
+                fontWeight: "600",
+                transition: "background-color 0.3s",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#3498db")}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#2980b9")}
+              disabled={pendingEvent}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {pendingEvent && (
+        <section
+          style={{
+            backgroundColor: "#e74c3c",
+            borderRadius: 8,
+            padding: 20,
+            color: "white",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+            marginBottom: 20,
+          }}
+        >
+          <h3 style={{ marginBottom: 12 }}>Evento!</h3>
+          <p style={{ fontSize: 18, fontWeight: "600", marginBottom: 20 }}>{pendingEvent.description}</p>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 15,
+            }}
+          >
+            {pendingEvent.options.map((opt, i) => (
+              <button
+                key={i}
+                onClick={() => resolveEvent(opt.effect)}
+                style={{
+                  backgroundColor: "#c0392b",
+                  border: "none",
+                  padding: "12px 20px",
+                  borderRadius: 6,
+                  cursor: "pointer",
+                  color: "white",
+                  fontWeight: "600",
+                  transition: "background-color 0.3s",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#e74c3c")}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#c0392b")}
+              >
+                {opt.text}
+              </button>
+            ))}
+            <button
+              onClick={ignoreEvent}
+              style={{
+                marginTop: 10,
+                backgroundColor: "#7f8c8d",
+                border: "none",
+                padding: "10px 16px",
+                borderRadius: 6,
+                cursor: "pointer",
+                color: "white",
+                fontWeight: "600",
+                transition: "background-color 0.3s",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#95a5a6")}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#7f8c8d")}
+            >
+              Ignora evento
+            </button>
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}
