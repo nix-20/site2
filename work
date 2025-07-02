@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Previsione casuale lavoro e guadagno mensile</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 500px;
+      margin: 40px auto;
+      padding: 0 15px;
+      background: #f9f9f9;
+      color: #333;
+      text-align: center;
+    }
+    h1 {
+      margin-bottom: 30px;
+    }
+    button {
+      padding: 12px 25px;
+      font-size: 1.1em;
+      border: none;
+      border-radius: 8px;
+      background: #4CAF50;
+      color: white;
+      cursor: pointer;
+      margin-top: 20px;
+      transition: background 0.3s;
+    }
+    button:hover {
+      background: #45a049;
+    }
+    .result {
+      background: #fff;
+      border-radius: 8px;
+      padding: 30px 20px;
+      box-shadow: 0 0 8px rgba(0,0,0,0.1);
+      font-size: 1.4em;
+      margin-top: 40px;
+      min-height: 120px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+  </style>
+</head>
+<body>
+  <h1>Che lavoro farai? E quanto guadagnerai?</h1>
+
+  <div class="result" id="result">Caricamento...</div>
+
+  <button id="generateBtn">Genera nuovo lavoro</button>
+
+  <script>
+    const jobs = [
+      {name: "Ingegnere informatico", salary: 35000},
+      {name: "Medico", salary: 50000},
+      {name: "Avvocato", salary: 40000},
+      {name: "Insegnante", salary: 28000},
+      {name: "Architetto", salary: 32000},
+      {name: "Fisioterapista", salary: 27000},
+      {name: "Pasticcere", salary: 20000},
+      {name: "Meccanico", salary: 22000},
+      {name: "Idraulico", salary: 23000},
+      {name: "Elettricista", salary: 25000},
+      {name: "Grafico", salary: 24000},
+      {name: "Fotografo", salary: 21000},
+      {name: "Scrittore", salary: 18000},
+      {name: "Giornalista", salary: 27000},
+      {name: "Psicologo", salary: 35000},
+      {name: "Biologo", salary: 30000},
+      {name: "Cuoco", salary: 22000},
+      {name: "Barista", salary: 18000},
+      {name: "Pilota", salary: 60000},
+      {name: "Musicista", salary: 25000},
+      {name: "Atleta professionista", salary: 45000},
+      {name: "Dentista", salary: 48000},
+      {name: "Farmacista", salary: 35000},
+      {name: "Poliziotto", salary: 29000},
+      {name: "Vigile del fuoco", salary: 32000},
+      {name: "Contabile", salary: 31000},
+      {name: "Consulente finanziario", salary: 42000},
+      {name: "Imprenditore", salary: 40000},
+      {name: "Tecnico informatico", salary: 27000},
+      {name: "Sviluppatore software", salary: 40000},
+      {name: "Ricercatore", salary: 30000},
+      {name: "Operaio", salary: 20000},
+      {name: "Autista", salary: 22000},
+      {name: "Estetista", salary: 21000},
+      {name: "Agricoltore", salary: 19000},
+      {name: "Impiegato amministrativo", salary: 25000},
+      {name: "Direttore d'azienda", salary: 55000},
+      {name: "Pilota di droni", salary: 35000},
+      {name: "Traduttore", salary: 28000},
+      {name: "Web designer", salary: 32000},
+      {name: "Social media manager", salary: 30000},
+      {name: "Operatore turistico", salary: 23000},
+      {name: "Operatore sanitario", salary: 26000},
+      {name: "Scienziato dei dati", salary: 45000},
+      {name: "Ingegnere civile", salary: 37000},
+      {name: "Operaio edile", salary: 24000},
+      {name: "Manager marketing", salary: 43000},
+      {name: "Analista di sistema", salary: 39000},
+      {name: "Tecnico di laboratorio", salary: 27000}
+    ];
+
+    const result = document.getElementById("result");
+    const btn = document.getElementById("generateBtn");
+
+    function generaLavoroCasuale() {
+      const idx = Math.floor(Math.random() * jobs.length);
+      const job = jobs[idx];
+      const variation = 0.9 + Math.random() * 0.2; // variazione da -10% a +10%
+      const salaryMonthly = Math.round((job.salary * variation) / 12);
+      result.textContent = `Farai il lavoro di ${job.name} e guadagnerai circa €${salaryMonthly.toLocaleString()} al mese.`;
+    }
+
+    btn.addEventListener("click", generaLavoroCasuale);
+
+    window.onload = generaLavoroCasuale;
+  </script>
+</body>
+</html>
