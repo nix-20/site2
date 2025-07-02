@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vita Interattiva</title>
+  <style>
+    body {
+      background: #0e0e0e;
+      color: #eee;
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    h1 {
+      color: #00ff99;
+    }
+    button {
+      background: #1a1a1a;
+      color: #eee;
+      border: 1px solid #333;
+      padding: 10px;
+      margin-top: 10px;
+      width: 100%;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+    button:hover {
+      background: #333;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 5px;
+      margin: 10px 0;
+    }
+    .log {
+      background: #111;
+      padding: 10px;
+      border-radius: 5px;
+      margin-top: 15px;
+      max-height: 200px;
+      overflow-y: auto;
+      font-size: 14px;
+    }
+    .choice {
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Simulatore di Vita</h1>
+    <div id="start">
+      <input type="text" id="nome" placeholder="Nome" style="width:100%; padding:10px;">
+      <input type="text" id="sesso" placeholder="Sesso (M/F)" style="width:100%; padding:10px; margin-top:10px;">
+      <button onclick="iniziaVita()">Inizia la vita</button>
+    </div>
+
+    <div id="gioco" style="display:none">
+      <p><strong>Età:</strong> <span id="eta"></span></p>
+      <div class="stats">
+        <div>Salute: <span id="salute"></span>%</div>
+        <div>Felicità: <span id="felicita"></span>%</div>
+        <div>Intelligenza: <span id="intelligenza"></span>%</div>
+        <div>Soldo: $<span id="soldi"></span></div>
+      </div>
+      <div id="evento"></div>
+      <div class="choice" id="scelte"></div>
+      <div class="log" id="log"></div>
+    </div>
+  </div>
+
+  <script>
+    let stato = {};
+
+    function iniziaVita() {
+      stato = {
+        nome: document.getElementById("nome").value.trim(),
+        sesso: document.getElementById("sesso").value.trim().toUpperCase(),
+        eta: 0,
+        salute: rand(60, 100),
+        felicita: rand(50, 100),
+        intelligenza: rand(40, 100),
+        soldi: 0,
+        vivo: true,
+        log: ["Sei nato."],
+      };
+
+      document.getElementById("start").style.display = "none";
+      document.getElementById("gioco").style.display = "block";
+      aggiornaUI();
+      prossimoEvento();
+    }
+
+    function rand(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function aggiornaUI() {
+      document.getElementById("eta").innerText = stato.eta;
+      document.getElementById("salute").innerText = stato.salute;
+      document.getElementById("felicita").innerText = stato.felicita;
+      document.getElementById("intelligenza").innerText = stato.intelligenza;
+      document.getElementById("soldi").innerText = stato.soldi;
+      document.getElementById("log").innerHTML = stato.log.map(e => `> ${e}`).join("<br>");
+    }
+
+    function prossimoEvento() {
+      stato.eta++;
+      if (!stato.vivo || stato.eta > 100 || stato.salute <= 0) {
+        stato.vivo = false;
+        stato.log.push("Sei morto a " + stato.eta + " anni.");
+        aggiornaUI();
+        document.getElementById("evento").innerHTML = "Fine della vita.";
+        document.getElementById("scelte").innerHTML = "";
+        return;
+      }
+
+      const eventi = generaEventi();
+      const evento = eventi[rand(0, eventi.length - 1)];
+
+      document.getElementById("evento").innerHTML = evento.testo;
+      const scelteHTML = evento.scelte.map((scelta, i) => {
+        return `<button onclick="scegli(${i})">${scelta.testo}</button>`;
+      }).join("");
+
+      document.getElementById("scelte").innerHTML = scelteHTML;
+      stato.eventoCorrente = evento;
+      aggiornaUI();
+    }
+
+    function scegli(i) {
+      const scelta = stato.eventoCorrente.scelte[i];
+      stato.salute = Math.max(0, stato.salute + (scelta.salute || 0));
+      stato.felicita = Math.max(0, stato.felicita + (scelta.felicita || 0));
+      stato.intelligenza = Math.max(0, stato.intelligenza + (scelta.intelligenza || 0));
+      stato.soldi += (scelta.soldi || 0);
+      stato.log.push(scelta.log);
+      prossimoEvento();
+    }
+
+    function generaEventi() {
+      const e = [];
+      const eta = stato.eta;
+
+      if (eta === 6) {
+        e.push({
+          testo: "È ora di andare a scuola. Vuoi studiare seriamente?",
+          scelte: [
+            { testo: "Sì", intelligenza: +10, felicita: -5, log: "Hai studiato con impegno." },
+            { testo: "No", intelligenza: -5, felicita: +5, log: "Hai perso tempo a giocare." }
+          ]
+        });
+      }
+
+      if (eta === 18) {
+        e.push({
+          testo: "Diploma ottenuto! Vuoi andare all’università?",
+          scelte: [
+            { testo: "Sì", intelligenza: +15, soldi: -5000, log: "Hai iniziato l’università." },
+            { testo: "No", felicita: +5, log: "Hai deciso di non studiare oltre." }
+          ]
+        });
+      }
+
+      if (eta === 25) {
+        e.push({
+          testo: "Ti offrono un lavoro come operaio o sviluppatore (richiede intelligenza > 60). Cosa scegli?",
+          scelte: [
+            { testo: "Sviluppatore", soldi: stato.intelligenza > 60 ? 30000 : 0, log: stato.intelligenza > 60 ? "Hai ottenuto il lavoro da sviluppatore." : "Non sei abbastanza preparato." },
+            { testo: "Operaio", soldi: 15000, log: "Hai iniziato a lavorare come operaio." }
+          ]
+        });
+      }
+
+      if (eta >= 30 && eta <= 70) {
+        e.push({
+          testo: "Vuoi iniziare a fumare?",
+          scelte: [
+            { testo: "Sì", salute: -10, felicita: +5, log: "Hai iniziato a fumare." },
+            { testo: "No", log: "Hai evitato il vizio." }
+          ]
+        });
+
+        e.push({
+          testo: "Hai ricevuto un'eredità casuale!",
+          scelte: [
+            { testo: "Accetta", soldi: rand(1000, 10000), log: "Hai ricevuto un’eredità." },
+            { testo: "Rifiuta", log: "Hai rifiutato per motivi morali." }
+          ]
+        });
+      }
+
+      e.push({
+        testo: "Cosa vuoi fare quest’anno?",
+        scelte: [
+          { testo: "Allenarti", salute: +5, felicita: +2, log: "Hai fatto esercizio fisico." },
+          { testo: "Viaggiare", soldi: -1000, felicita: +10, log: "Hai viaggiato e ti sei divertito." },
+          { testo: "Nulla", log: "Hai passato un anno tranquillo." }
+        ]
+      });
+
+      return e;
+    }
+  </script>
+</body>
+</html>
