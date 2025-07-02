@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8" />
+<title>Quando morirai</title>
+<style>
+  body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; }
+  #timer { font-size: 2em; margin: 20px; }
+  #cause { font-size: 1.5em; color: darkred; margin: 20px; }
+  button { padding: 10px 20px; font-size: 1em; }
+</style>
+</head>
+<body>
+
+<h1>Quanto manca alla tua morte?</h1>
+<div id="timer">Calcolo...</div>
+<div id="cause">...</div>
+<button id="resetBtn">Ricalcola</button>
+
+<script>
+const causes = [
+  {name: "Vecchiaia", prob: 0.25},
+  {name: "Incidente stradale", prob: 0.0395},
+  {name: "Malattia improvvisa", prob: 0.0395},
+  {name: "Malattia cronica", prob: 0.0395},
+  {name: "Incendio", prob: 0.0395},
+  {name: "Avvelenamento", prob: 0.0395},
+  {name: "Annegamento", prob: 0.0395},
+  {name: "Caduta", prob: 0.0395},
+  {name: "Attacco animale", prob: 0.0395},
+  {name: "Omicidio", prob: 0.0395},
+  {name: "Guerra", prob: 0.0395},
+  {name: "Eruzione vulcanica", prob: 0.0395},
+  {name: "Terremoto", prob: 0.0395},
+  {name: "Infezione grave", prob: 0.0395},
+  {name: "Allergia fatale", prob: 0.0395},
+  {name: "Intossicazione da cibo", prob: 0.0395},
+  {name: "Attacco cardiaco", prob: 0.0395},
+  {name: "Ictus", prob: 0.0395},
+  {name: "Attacco terroristico", prob: 0.0395},
+  {name: "Sciopero di fame", prob: 0.0395},
+];
+
+function chooseCause() {
+  let r = Math.random();
+  let sum = 0;
+  for (let c of causes) {
+    sum += c.prob;
+    if (r <= sum) return c.name;
+  }
+  return causes[causes.length - 1].name;
+}
+
+// Funzione per calcolare differenza tra due date in anni, mesi, giorni
+function diffDates(start, end) {
+  let diffYears = end.getFullYear() - start.getFullYear();
+  let diffMonths = end.getMonth() - start.getMonth();
+  let diffDays = end.getDate() - start.getDate();
+
+  if(diffDays < 0) {
+    diffMonths--;
+    diffDays += new Date(end.getFullYear(), end.getMonth(), 0).getDate();
+  }
+  if(diffMonths < 0) {
+    diffYears--;
+    diffMonths += 12;
+  }
+
+  return {years: diffYears, months: diffMonths, days: diffDays};
+}
+
+// Genera una data di morte casuale aggiungendo anni, mesi, giorni
+function generateDeathDate() {
+  const now = new Date();
+  // anni tra 1 e 80 (esempio)
+  let years = Math.floor(Math.random() * 80) + 1;
+  let months = Math.floor(Math.random() * 12);
+  let days = Math.floor(Math.random() * 30);
+
+  let deathDate = new Date(now);
+  deathDate.setFullYear(deathDate.getFullYear() + years);
+  deathDate.setMonth(deathDate.getMonth() + months);
+  deathDate.setDate(deathDate.getDate() + days);
+
+  return deathDate;
+}
+
+let deathDate;
+let cause;
+
+function updateTimer() {
+  let now = new Date();
+  if (now >= deathDate) {
+    document.getElementById("timer").textContent = "Sei morto.";
+    return;
+  }
+  let diff = diffDates(now, deathDate);
+
+  document.getElementById("timer").textContent = `Manca: ${diff.years} anni, ${diff.months} mesi, ${diff.days} giorni`;
+  setTimeout(updateTimer, 60000); // aggiorna ogni minuto
+}
+
+function startTimer() {
+  deathDate = generateDeathDate();
+  cause = chooseCause();
+
+  document.getElementById("cause").textContent = `Morirai per: ${cause}`;
+  updateTimer();
+}
+
+document.getElementById("resetBtn").addEventListener("click", startTimer);
+
+startTimer();
+
+</script>
+
+</body>
+</html>
