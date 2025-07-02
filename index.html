@@ -1,0 +1,194 @@
+import { useState, useEffect } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { Input } from "@/components/ui/input";
+
+const randomFromArray = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+const baseEvents = [
+  (state) => {
+    if (state.age === 0) return { log: "Sei nato.", state };
+  },
+  (state) => {
+    if (state.age === 6) return { log: "Hai iniziato la scuola.", state };
+  },
+  (state) => {
+    if (state.age === 14 && state.stats.intelligenza < 40) {
+      return { log: "Hai difficoltà a scuola per via dei voti bassi.", state };
+    }
+  },
+  (state) => {
+    if (state.age === 18 && state.stats.intelligenza > 60) {
+      state.stats.denaro += 5000;
+      return { log: "Hai ottenuto una borsa di studio!", state };
+    }
+  },
+  (state) => {
+    if (state.age === 25) {
+      const lavoro = randomFromArray(["sviluppatore", "cassiere", "insegnante", "artista"]);
+      state.occupazione = lavoro;
+      state.stats.denaro += 10000;
+      return { log: `Hai trovato lavoro come ${lavoro}.`, state };
+    }
+  },
+  (state) => {
+    if (state.age === 40 && state.stats.salute < 40) {
+      return { log: "Hai avuto una crisi di salute per via dello stile di vita poco sano.", state };
+    }
+  },
+  (state) => {
+    if (state.age === 70 && Math.random() < 0.3) {
+      return { log: "Sei morto serenamente a 70 anni.", end: true, state };
+    }
+  }
+];
+
+const generateStat = () => Math.floor(Math.random() * 100);
+
+export default function LifeSimulator() {
+  const [age, setAge] = useState(0);
+  const [logs, setLogs] = useState(["Sei nato."]);
+  const [end, setEnd] = useState(false);
+  const [stats, setStats] = useState({
+    intelligenza: generateStat(),
+    salute: generateStat(),
+    felicità: generateStat(),
+    denaro: 0,
+  });
+  const [occupazione, setOccupazione] = useState("nessuna");
+  const [nome, setNome] = useState("");
+  const [sesso, setSesso] = useState("");
+  const [schermataIniziale, setSchermataIniziale] = useState(true);
+
+  // Salvataggio automatico
+  useEffect(() => {
+    if (!schermataIniziale) {
+      const dati = {
+        age,
+        stats,
+        logs,
+        end,
+        occupazione,
+        nome,
+        sesso,
+      };
+      localStorage.setItem("vita_salvata", JSON.stringify(dati));
+    }
+  }, [age, stats, logs, end, occupazione, nome, sesso, schermataIniziale]);
+
+  // Carica se esiste
+  useEffect(() => {
+    const salvata = localStorage.getItem("vita_salvata");
+    if (salvata) {
+      const d = JSON.parse(salvata);
+      setAge(d.age);
+      setStats(d.stats);
+      setLogs(d.logs);
+      setEnd(d.end);
+      setOccupazione(d.occupazione);
+      setNome(d.nome);
+      setSesso(d.sesso);
+      setSchermataIniziale(false);
+    }
+  }, []);
+
+  const advanceYear = () => {
+    if (end) return;
+    let newAge = age + 1;
+    let newStats = { ...stats };
+    let newLog = `Età ${newAge}.`;
+    let terminated = false;
+
+    for (let ev of baseEvents) {
+      const outcome = ev({ age: newAge, stats: newStats, occupazione });
+      if (outcome) {
+        newLog += " " + outcome.log;
+        newStats = outcome.state.stats;
+        if (outcome.end) terminated = true;
+        if (outcome.state.occupazione) setOccupazione(outcome.state.occupazione);
+      }
+    }
+
+    setAge(newAge);
+    setStats(newStats);
+    setLogs((prev) => [...prev, newLog]);
+    if (terminated || newAge > 99) setEnd(true);
+  };
+
+  const reset = () => {
+    setAge(0);
+    setEnd(false);
+    setOccupazione("nessuna");
+    setStats({
+      intelligenza: generateStat(),
+      salute: generateStat(),
+      felicità: generateStat(),
+      denaro: 0,
+    });
+    setLogs(["Sei nato."]);
+    setSchermataIniziale(true);
+    setNome("");
+    setSesso("");
+    localStorage.removeItem("vita_salvata");
+  };
+
+  const avviaNuovaVita = () => {
+    if (!nome || !sesso) return;
+    setSchermataIniziale(false);
+  };
+
+  if (schermataIniziale) {
+    return (
+      <div className="p-4 max-w-md mx-auto text-white space-y-4">
+        <h1 className="text-3xl font-bold text-center">Simulatore di Vita</h1>
+        <Input
+          placeholder="Nome"
+          value={nome}
+          onChange={(e) => setNome(e.target.value)}
+        />
+        <Input
+          placeholder="Sesso (M/F)"
+          value={sesso}
+          onChange={(e) => setSesso(e.target.value)}
+        />
+        <Button onClick={avviaNuovaVita}>Inizia</Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4 max-w-2xl mx-auto space-y-4 relative">
+      <Button onClick={reset} className="absolute top-4 right-4" variant="destructive">
+        Nuova Vita
+      </Button>
+      <h1 className="text-3xl font-bold text-center text-white">
+        Vita di {nome} ({sesso})
+      </h1>
+      <Card className="bg-black text-white">
+        <CardContent className="space-y-2">
+          <p>Età: {age}</p>
+          <p>Occupazione: {occupazione}</p>
+          <div className="grid grid-cols-2 gap-2">
+            {Object.entries(stats).map(([key, val]) => (
+              <div key={key}>
+                <p className="capitalize">{key}</p>
+                <Progress value={val} className="h-2 bg-gray-800" />
+              </div>
+            ))}
+          </div>
+          <div className="flex space-x-2">
+            <Button onClick={advanceYear} disabled={end} variant="secondary">
+              {end ? "Fine della Vita" : "Avanza di un Anno"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+      <div className="bg-gray-900 text-white rounded-xl p-3 space-y-1 text-sm max-h-64 overflow-y-auto">
+        {logs.map((log, i) => (
+          <p key={i}>{log}</p>
+        ))}
+      </div>
+    </div>
+  );
+}
