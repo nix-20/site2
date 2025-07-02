@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Simulatore di Vita</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background-color: #111;
+      color: #eee;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      min-height: 100vh;
+      position: relative;
+    }
+    h1 {
+      color: #0f0;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .container {
+      max-width: 480px;
+      width: 100%;
+      background: #222;
+      border-radius: 10px;
+      padding: 25px;
+      box-shadow: 0 0 15px #0f0a;
+    }
+    .hidden {
+      display: none;
+    }
+    input, button {
+      width: 100%;
+      padding: 12px 15px;
+      margin-top: 12px;
+      background: #222;
+      color: #eee;
+      border: 1px solid #444;
+      border-radius: 6px;
+      font-size: 16px;
+      transition: background-color 0.3s ease;
+    }
+    input::placeholder {
+      color: #666;
+    }
+    button:hover {
+      background: #333;
+      cursor: pointer;
+    }
+    p {
+      margin: 10px 0 6px 0;
+      font-weight: 600;
+    }
+    .stat-bar {
+      background: #222;
+      height: 12px;
+      border-radius: 6px;
+      margin: 6px 0 14px 0;
+      overflow: hidden;
+      box-shadow: inset 0 0 5px #000;
+    }
+    .stat-fill {
+      height: 100%;
+      background: #0f0;
+      transition: width 0.4s ease;
+      box-shadow: 0 0 8px #0f0;
+    }
+    .log {
+      background: #1a1a1a;
+      padding: 12px 14px;
+      margin-top: 20px;
+      border-radius: 8px;
+      max-height: 220px;
+      overflow-y: auto;
+      font-size: 14px;
+      line-height: 1.4;
+      box-shadow: inset 0 0 10px #0f0a;
+    }
+    .log div {
+      margin-bottom: 8px;
+      color: #0f0;
+    }
+    .top-right {
+      position: fixed;
+      top: 18px;
+      right: 18px;
+      z-index: 100;
+    }
+    .top-right button {
+      width: auto;
+      padding: 10px 18px;
+      font-weight: 700;
+      background: #0f0;
+      color: #111;
+      border: none;
+      border-radius: 8px;
+      box-shadow: 0 0 12px #0f0;
+      transition: background-color 0.3s ease;
+    }
+    .top-right button:hover {
+      background: #0c0;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="top-right">
+    <button onclick="startNewLife()">Nuova Vita</button>
+  </div>
+
+  <div class="container">
+    <h1>Simulatore di Vita</h1>
+
+    <div id="start-screen">
+      <input type="text" id="nome" placeholder="Inserisci il tuo nome" autocomplete="off" />
+      <input type="text" id="sesso" placeholder="Inserisci il tuo sesso (M/F)" maxlength="1" autocomplete="off" />
+      <button onclick="iniziaVita()">Inizia</button>
+    </div>
+
+    <div id="game-screen" class="hidden">
+      <p><strong>Nome:</strong> <span id="dati-nome"></span> (<span id="dati-sesso"></span>)</p>
+      <p><strong>Età:</strong> <span id="eta">0</span></p>
+      <p><strong>Occupazione:</strong> <span id="lavoro">-</span></p>
+
+      <p>Intelligenza</p>
+      <div class="stat-bar"><div id="intelligenza-bar" class="stat-fill" style="width:0"></div></div>
+
+      <p>Salute</p>
+      <div class="stat-bar"><div id="salute-bar" class="stat-fill" style="width:0"></div></div>
+
+      <p>Felicità</p>
+      <div class="stat-bar"><div id="felicita-bar" class="stat-fill" style="width:0"></div></div>
+
+      <button onclick="avanzaAnno()">Avanza di un anno</button>
+
+      <div class="log" id="log"></div>
+    </div>
+  </div>
+
+  <script>
+    let stato = {};
+    const logBox = document.getElementById('log');
+
+    function iniziaVita() {
+      const nome = document.getElementById('nome').value.trim();
+      const sesso = document.getElementById('sesso').value.trim().toUpperCase();
+
+      if (!nome || (sesso !== 'M' && sesso !== 'F')) {
+        alert("Inserisci un nome valido e il sesso (M o F).");
+        return;
+      }
+
+      stato = {
+        nome,
+        sesso,
+        eta: 0,
+        lavoro: '-',
+        salute: rand(60, 100),
+        intelligenza: rand(0, 100),
+        felicita: rand(30, 100),
+        vivo: true,
+        logs: ['Sei nato.']
+      };
+
+      document.getElementById('start-screen').classList.add('hidden');
+      document.getElementById('game-screen').classList.remove('hidden');
+
+      document.getElementById('dati-nome').innerText = nome;
+      document.getElementById('dati-sesso').innerText = sesso;
+
+      aggiornaUI();
+    }
+
+    function rand(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function aggiornaUI() {
+      document.getElementById('eta').innerText = stato.eta;
+      document.getElementById('lavoro').innerText = stato.lavoro;
+
+      document.getElementById('intelligenza-bar').style.width = stato.intelligenza + '%';
+      document.getElementById('salute-bar').style.width = stato.salute + '%';
+      document.getElementById('felicita-bar').style.width = stato.felicita + '%';
+
+      logBox.innerHTML = stato.logs.map(l => `<div>&gt; ${l}</div>`).join('');
+      logBox.scrollTop = logBox.scrollHeight; // scrolla in basso automaticamente
+    }
+
+    function avanzaAnno() {
+      if (!stato.vivo) return;
+
+      stato.eta++;
+      stato.felicita -= rand(0, 5);
+      stato.salute -= rand(0, 5);
+
+      if (stato.eta === 6) stato.logs.push('Hai iniziato la scuola.');
+      if (stato.eta === 18 && stato.intelligenza > 60) stato.logs.push('Hai ricevuto una borsa di studio.');
+      if (stato.eta === 25 && stato.lavoro === '-') {
+        const lavori = ['Cassiere', 'Sviluppatore', 'Meccanico', 'Artista'];
+        stato.lavoro = lavori[rand(0, lavori.length - 1)];
+        stato.logs.push(`Hai trovato lavoro come ${stato.lavoro}.`);
+      }
+      if (stato.eta === 70 && Math.random() < 0.3) {
+        stato.logs.push('Sei morto serenamente a 70 anni.');
+        stato.vivo = false;
+      }
+      if (stato.eta > 99) {
+        stato.logs.push('Hai raggiunto il limite massimo di età.');
+        stato.vivo = false;
+      }
+
+      aggiornaUI();
+    }
+
+    function startNewLife() {
+      location.reload();
+    }
+  </script>
+
+</body>
+</html>
