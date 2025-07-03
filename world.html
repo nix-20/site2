@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mondi di Identità Infiniti</title>
+  <style>
+    :root {
+      --bg-color: white;
+      --text-color: black;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      font-family: sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      transition: all 0.5s ease;
+      text-align: center;
+      padding: 2rem;
+    }
+    input[type="text"] {
+      padding: 0.5rem;
+      font-size: 1rem;
+      margin-top: 1rem;
+      width: 100%;
+      max-width: 400px;
+    }
+    button {
+      margin-top: 1rem;
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      cursor: pointer;
+      border: none;
+      border-radius: 4px;
+      background-color: #444;
+      color: white;
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      background-color: #222;
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <script>
+    const questionsPerWorld = 50;
+    const storagePrefix = "identity_world_";
+    const currentWorldKey = "current_world_index";
+
+    // Domande in italiano per ogni mondo
+    function generateQuestions(worldIndex) {
+      const baseQuestions = [
+        "Cosa ti definisce oggi?",
+        "Di cosa hai paura?",
+        "Cosa cerchi?",
+        "Chi stai diventando?",
+        "Cosa distruggeresti?",
+        "Qual è il tuo scopo ora?",
+        "Quale segreto stai nascondendo?",
+        "Di cosa hai bisogno per lasciar andare?",
+        "Da dove viene il tuo potere?",
+        "Cosa desideri di più?",
+        "Cosa motiva le tue azioni?",
+        "Quali ricordi ti modellano?",
+        "Cosa sogni?",
+        "Cosa apprezzi?",
+        "Qual è la tua sfida più grande?",
+        "Cosa cambieresti nel mondo?",
+        "Di cosa ti penti?",
+        "Cosa ti entusiasma?",
+        "Chi ti ispira?",
+        "Cosa nascondi?",
+        "Cosa ti porta pace?",
+        "Quali colori il tuo umore?",
+        "Cosa ignori?",
+        "Cosa ami di più?",
+        "Cosa proteggeresti a tutti i costi?",
+        "Cosa significa per te la libertà?",
+        "Come immagini il successo?",
+        "Qual è la tua forza più grande?",
+        "Quale debolezza accetti?",
+        "Cosa vorresti creare?",
+        "Cosa ti spaventa di più?",
+        "Cosa speri di imparare?",
+        "Qual è il tuo ricordo preferito?",
+        "Cosa ti fa ridere?",
+        "Cosa ti fa piangere?",
+        "Di cosa ti fidi?",
+        "Di cosa dubiti?",
+        "Cosa rischieresti tutto?",
+        "Cosa definisce la tua identità?",
+        "Cosa vorresti dimenticare?",
+        "Cosa ti dà coraggio?",
+        "Qual è il tuo desiderio più grande?",
+        "Cosa odi?",
+        "Cosa ti rende unico?",
+        "Cosa ammiri?",
+        "Di cosa sei grato?",
+        "Cosa vorresti dire al tuo passato?",
+        "Cosa significa felicità?",
+        "Come si sente la tristezza?",
+        "Cosa vorresti che gli altri sapessero di te?"
+      ];
+
+      // Ruota l’array in base all’indice mondo per variare ordine
+      const shift = worldIndex % baseQuestions.length;
+      const rotated = baseQuestions.slice(shift).concat(baseQuestions.slice(0, shift));
+      return rotated.slice(0, questionsPerWorld);
+    }
+
+    const themes = [
+      { bg: '#0f172a', text: '#facc15', desc: 'Ora cammini nelle ombre della verità.' },
+      { bg: '#ecfccb', text: '#3f6212', desc: 'La crescita avvolge la tua identità.' },
+      { bg: '#f0f9ff', text: '#0369a1', desc: 'Flutti tra ricordi dimenticati.' },
+      { bg: '#fffbeb', text: '#92400e', desc: 'Un mondo di dolce fuoco ti circonda.' },
+      { bg: '#fef2f2', text: '#b91c1c', desc: 'La tua anima è scritta nel cremisi.' },
+      { bg: '#fdf4ff', text: '#7e22ce', desc: 'Hai scelto un enigma come percorso.' },
+      { bg: '#e0f2fe', text: '#0ea5e9', desc: 'Il cielo ha accettato la tua risposta.' },
+      { bg: '#f1f5f9', text: '#0f172a', desc: 'Tutto è ora ridotto all’essenza.' }
+    ];
+
+    function getCurrentWorld() {
+      return parseInt(localStorage.getItem(currentWorldKey) || '0', 10);
+    }
+
+    function setCurrentWorld(index) {
+      localStorage.setItem(currentWorldKey, index.toString());
+    }
+
+    function getAnswers(worldIndex) {
+      const answers = [];
+      for(let i=0; i<questionsPerWorld; i++) {
+        const ans = localStorage.getItem(storagePrefix + worldIndex + "_" + i);
+        if(ans !== null) answers.push(ans);
+        else break;
+      }
+      return answers;
+    }
+
+    function saveAnswer(worldIndex, questionIndex, answer) {
+      localStorage.setItem(storagePrefix + worldIndex + "_" + questionIndex, answer);
+    }
+
+    function clearAnswers(worldIndex) {
+      for(let i=0; i<questionsPerWorld; i++) {
+        localStorage.removeItem(storagePrefix + worldIndex + "_" + i);
+      }
+    }
+
+    function renderTheme(worldIndex, questionIndex, question, answer) {
+      const theme = themes[(worldIndex + questionIndex) % themes.length];
+      document.documentElement.style.setProperty('--bg-color', theme.bg);
+      document.documentElement.style.setProperty('--text-color', theme.text);
+
+      const app = document.getElementById("app");
+      app.innerHTML = `
+        <h1>${theme.desc}</h1>
+        <p><strong>Domanda ${questionIndex + 1} di ${questionsPerWorld}:</strong> ${question}</p>
+        <p><strong>La tua risposta:</strong> "${answer}"</p>
+      `;
+    }
+
+    function renderQuestion(worldIndex, questionIndex, question) {
+      const app = document.getElementById("app");
+      app.innerHTML = `
+        <h1>Domanda ${questionIndex + 1} di ${questionsPerWorld}</h1>
+        <p>${question}</p>
+        <input type="text" id="response" placeholder="La tua risposta..." autocomplete="off" />
+        <br />
+        <button id="submitBtn">Invia</button>
+      `;
+
+      document.getElementById("submitBtn").onclick = () => {
+        const val = document.getElementById("response").value.trim();
+        if (!val) return alert("Per favore inserisci una risposta.");
+        saveAnswer(worldIndex, questionIndex, val);
+        renderTheme(worldIndex, questionIndex, question, val);
+
+        setTimeout(() => {
+          loadNextQuestion();
+        }, 1500);
+      };
+    }
+
+    function renderNewWorldButton() {
+      const app = document.getElementById("app");
+      app.innerHTML = `
+        <h1>Hai completato questo mondo!</h1>
+        <button id="newWorldBtn">Inizia nuovo mondo</button>
+      `;
+      document.documentElement.style.setProperty('--bg-color', '#111');
+      document.documentElement.style.setProperty('--text-color', '#eee');
+
+      document.getElementById("newWorldBtn").onclick = () => {
+        const currentWorld = getCurrentWorld();
+        clearAnswers(currentWorld);
+        setCurrentWorld(currentWorld + 1);
+        loadNextQuestion();
+      };
+    }
+
+    function loadNextQuestion() {
+      const currentWorld = getCurrentWorld();
+      const questions = generateQuestions(currentWorld);
+      const answers = getAnswers(currentWorld);
+
+      if (answers.length >= questionsPerWorld) {
+        renderNewWorldButton();
+        return;
+      }
+
+      const nextIndex = answers.length;
+      renderQuestion(currentWorld, nextIndex, questions[nextIndex]);
+    }
+
+    // Avvio
+    loadNextQuestion();
+  </script>
+</body>
+</html>
