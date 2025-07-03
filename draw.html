@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Galleria Disegni & Valutazioni</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    margin: 0; padding: 0;
+    display: flex; flex-direction: column; align-items: center;
+    background: #fafafa;
+    min-height: 100vh;
+  }
+  h1 {
+    margin: 1rem 0;
+  }
+  #canvasContainer {
+    border: 2px solid #444;
+    margin-bottom: 1rem;
+    position: relative;
+  }
+  canvas {
+    background: white;
+    cursor: crosshair;
+  }
+  button {
+    padding: 0.5rem 1rem;
+    margin: 0.5rem;
+    font-size: 1rem;
+    cursor: pointer;
+  }
+  #gallery {
+    width: 90%;
+    max-width: 800px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill,minmax(180px,1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  .drawing-card {
+    background: white;
+    border: 1px solid #ddd;
+    padding: 0.5rem;
+    border-radius: 6px;
+    box-shadow: 0 0 4px rgba(0,0,0,0.1);
+  }
+  .drawing-card img {
+    width: 100%;
+    border-radius: 4px;
+    display: block;
+    margin-bottom: 0.3rem;
+  }
+  .stars {
+    user-select: none;
+  }
+  .star {
+    font-size: 1.4rem;
+    color: #ccc;
+    cursor: pointer;
+  }
+  .star.selected,
+  .star.hover {
+    color: gold;
+  }
+</style>
+</head>
+<body>
+
+<h1>Disegna il tuo capolavoro</h1>
+
+<div id="canvasContainer">
+  <canvas id="drawCanvas" width="400" height="300"></canvas>
+</div>
+
+<div>
+  <button id="clearBtn">Cancella</button>
+  <button id="saveBtn">Salva disegno</button>
+</div>
+
+<h2>Galleria dei disegni</h2>
+<div id="gallery"></div>
+
+<script>
+  // Setup canvas e disegno
+  const canvas = document.getElementById('drawCanvas');
+  const ctx = canvas.getContext('2d');
+  let drawing = false;
+  let lastX=0, lastY=0;
+
+  function startDrawing(e) {
+    drawing = true;
+    [lastX, lastY] = getPos(e);
+  }
+  function stopDrawing() {
+    drawing = false;
+  }
+  function draw(e) {
+    if(!drawing) return;
+    const [x,y] = getPos(e);
+    ctx.strokeStyle = '#222';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(lastX,lastY);
+    ctx.lineTo(x,y);
+    ctx.stroke();
+    [lastX,lastY] = [x,y];
+  }
+  function getPos(e) {
+    if(e.touches) { // touch event
+      const rect = canvas.getBoundingClientRect();
+      return [e.touches[0].clientX - rect.left, e.touches[0].clientY - rect.top];
+    }
+    return [e.offsetX, e.offsetY];
+  }
+
+  canvas.addEventListener('mousedown', startDrawing);
+  canvas.addEventListener('touchstart', startDrawing);
+  canvas.addEventListener('mousemove', draw);
+  canvas.addEventListener('touchmove', draw);
+  canvas.addEventListener('mouseup', stopDrawing);
+  canvas.addEventListener('mouseout', stopDrawing);
+  canvas.addEventListener('touchend', stopDrawing);
+
+  document.getElementById('clearBtn').onclick = () => {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+  };
+
+  // Salva il disegno in localStorage come dataURL e crea entry in gallery
+  function saveDrawing() {
+    const dataURL = canvas.toDataURL();
+    const drawings = JSON.parse(localStorage.getItem('drawings') || '[]');
+    drawings.push({ image: dataURL, ratings: [] }); // nuovo disegno con nessuna valutazione
+    localStorage.setItem('drawings', JSON.stringify(drawings));
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    renderGallery();
+  }
+  document.getElementById('saveBtn').onclick = saveDrawing;
+
+  // Funzione per renderizzare la galleria
+  function renderGallery() {
+    const gallery = document.getElementById('gallery');
+    const drawings = JSON.parse(localStorage.getItem('drawings') || '[]');
+    gallery.innerHTML = '';
+
+    drawings.forEach((drawing, index) => {
+      const card = document.createElement('div');
+      card.className = 'drawing-card';
+
+      const img = document.createElement('img');
+      img.src = drawing.image;
+      card.appendChild(img);
+
+      // Media voti
+      const ratings = drawing.ratings || [];
+      const avg = ratings.length ? (ratings.reduce((a,b)=>a+b,0)/ratings.length).toFixed(2) : 'Nessuna valutazione';
+
+      // Stelle per votare
+      const starsDiv = document.createElement('div');
+      starsDiv.className = 'stars';
+
+      for(let i=1; i<=5; i++) {
+        const star = document.createElement('span');
+        star.className = 'star';
+        star.innerHTML = '★';
+        if(avg !== 'Nessuna valutazione' && i <= Math.round(avg)) {
+          star.classList.add('selected');
+        }
+        star.dataset.index = i;
+        star.dataset.drawingIndex = index;
+
+        star.addEventListener('mouseenter', (e) => {
+          const stars = e.target.parentNode.querySelectorAll('.star');
+          stars.forEach(s => s.classList.remove('hover'));
+          for(let j=0; j<i; j++) stars[j].classList.add('hover');
+        });
+        star.addEventListener('mouseleave', (e) => {
+          e.target.parentNode.querySelectorAll('.star').forEach(s => s.classList.remove('hover'));
+        });
+        star.addEventListener('click', (e) => {
+          const rating = parseInt(e.target.dataset.index);
+          const dIndex = parseInt(e.target.dataset.drawingIndex);
+
+          // Aggiungi rating all'array e salva
+          drawings[dIndex].ratings.push(rating);
+          localStorage.setItem('drawings', JSON.stringify(drawings));
+
+          renderGallery();
+        });
+
+        starsDiv.appendChild(star);
+      }
+
+      card.appendChild(starsDiv);
+
+      const avgDiv = document.createElement('div');
+      avgDiv.textContent = `Valutazione media: ${avg}`;
+      avgDiv.style.fontSize = '0.9rem';
+      avgDiv.style.marginTop = '0.3rem';
+      card.appendChild(avgDiv);
+
+      gallery.appendChild(card);
+    });
+  }
+
+  // Carica e mostra galleria all'avvio
+  renderGallery();
+</script>
+</body>
+</html>
